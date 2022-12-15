@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import random
 
+significant_digits = 3
 
 def compute_optimal_histogram_bin_edges(x_array,y_array):
     x_bin_edges=np.histogram_bin_edges(x_array, bins='auto')
@@ -70,12 +71,11 @@ def jensen_shannon_numerical(x_array, y_array):
     x_hist_list = x_hist.tolist()
     y_hist_list = y_hist.tolist()
 
-    return distance.jensenshannon(x_hist_list, y_hist_list)
+    return round(distance.jensenshannon(x_hist_list, y_hist_list), significant_digits)
 
 
 def normed_wasserstein_numerical(x_array, y_array):
 
-    
     #x_std = tstd(x_array)
     #y_std = tstd(y_array)
     
@@ -93,7 +93,7 @@ def normed_wasserstein_numerical(x_array, y_array):
 
     norm = tstd(x_hist_list)
 
-    return wasserstein_distance(x_hist_list, y_hist_list) / norm 
+    return round(wasserstein_distance(x_hist_list, y_hist_list) / norm, significant_digits) 
 
 
 def jensen_shannon_categorical(x_list, y_list):
@@ -105,4 +105,4 @@ def jensen_shannon_categorical(x_list, y_list):
     x_ratios = x_freqs / np.sum(x_freqs)  #Optional as JS-D normalizes probability vectors
     y_ratios = y_freqs / np.sum(y_freqs)
 
-    return distance.jensenshannon(x_ratios, y_ratios)
+    return round(distance.jensenshannon(x_ratios, y_ratios), significant_digits)
