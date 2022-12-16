@@ -72,7 +72,7 @@ def test_normed_wasserstein_distance_remain_roughly_constant_for_samples_of_diff
 # ------------------------------------------------------------ 
 
 
-# TEST: Statistical tests should fail reject the null hypothesis (p-value > alpha) for drifted distributions with different sample sizes
+# TEST: Statistical tests should fail reject the null hypothesis (p-value > alpha) samples of different sizes drawn from the same distribution
 
 # Applied to Kolmogorov-Smirnov test
 def test_ks_test_fail_to_reject_null_hypothesis_for_identical_distributions_with_different_sample_sizes():
@@ -83,7 +83,7 @@ def test_ks_test_fail_to_reject_null_hypothesis_for_identical_distributions_with
 # ------------------------------------------------------------ 
 
 
-# TEST: Statistical tests should reject the null hypothesis (p-value < alpha) for drifted distributions with different sample sizes
+# TEST: Statistical tests should reject the null hypothesis (p-value < alpha) for samples of different sizes drawn from a drifted distribution
 
 # Applied to Kolmogorov-Smirnov test
 def test_ks_test_reject_null_hypothesis_drifted_distributions_with_different_sample_sizes():
@@ -191,7 +191,7 @@ def test_jensen_shannon_categorical_distance_remain_roughly_constant_for_samples
     assert abs(jensen_shannon_distance_categorical(a1_list, b1_list) - jensen_shannon_distance_categorical(a1_list, b10_list)) == 0
 
 
-# TEST: Statistical tests should fail reject the null hypothesis (p-value > alpha) for drifted distributions with different sample sizes
+# TEST: Statistical tests should fail reject the null hypothesis (p-value > alpha) samples of different sizes drawn from the same distribution
 
 # Applied to Chi-Squared test
 def test_chi2_test_fail_to_reject_null_hypothesis_for_identical_distributions_with_different_sample_sizes():
@@ -202,7 +202,7 @@ def test_chi2_test_fail_to_reject_null_hypothesis_for_identical_distributions_wi
 # ------------------------------------------------------------ 
 
 
-# TEST: Statistical tests should reject the null hypothesis (p-value < alpha) for drifted distributions with different sample sizes
+# TEST: Statistical tests should reject the null hypothesis (p-value < alpha) for samples of different sizes drawn from a drifted distribution
 
 # Applied to Chi-Squared test
 def test_chi2_test_reject_null_hypothesis_for_drifted_distributions_with_different_sample_sizes():
