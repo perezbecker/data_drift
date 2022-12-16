@@ -98,13 +98,6 @@ def jensen_shannon_distance_numerical(x_array, y_array):
 
 def normed_wasserstein_distance_numerical(x_array, y_array):
 
-    #x_std = tstd(x_array)
-    #y_std = tstd(y_array)
-    
-    #watch out! both are normalized by x_std
-    #normed_x_array = x_array / x_std
-    #normed_y_array = y_array / x_std
-
     bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array)
 
     x_hist, x_bin_edges = np.histogram(x_array, density = True, bins=bin_edges)
