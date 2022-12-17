@@ -22,14 +22,8 @@ def compute_optimal_histogram_bin_edges(x_array,y_array):
     
     #add min and max value to both distributions in order estimate the appropriate number of bins
     #for both samples that span the entire range of data.
-    if min_value not in x_array:
-        x_array = np.append(x_array,min_value)
-    if min_value not in y_array:
-        y_array = np.append(y_array,min_value)    
-    if max_value not in x_array:
-        x_array = np.append(x_array,max_value)
-    if max_value not in y_array:
-        y_array = np.append(y_array,max_value)    
+    x_array = np.append(x_array,[min_value, max_value])
+    y_array = np.append(y_array,[min_value, max_value])    
 
     #compute optimal bin edges for both distributions after having been extended to [min_value,max_value]
     x_bin_edges=np.histogram_bin_edges(x_array, bins='auto')
