@@ -15,15 +15,28 @@ config = safe_load(open('config.yml','rb'))
 
 
 def compute_optimal_histogram_bin_edges(x_array,y_array):
+    
+    #find overall min and max values for both distributions
+    min_value = min(np.amin(x_array), np.amin(y_array))
+    max_value = min(np.amax(x_array), np.amax(y_array))
+    
+    #add min and max value to both distributions in order estimate the appropriate number of bins
+    #for both samples that span the entire range of data.
+    if min_value not in x_array:
+        x_array = np.append(x_array,min_value)
+    if min_value not in y_array:
+        y_array = np.append(y_array,min_value)    
+    if max_value not in x_array:
+        x_array = np.append(x_array,max_value)
+    if max_value not in y_array:
+        y_array = np.append(y_array,max_value)    
+
+    #compute optimal bin edges for both distributions after having been extended to [min_value,max_value]
     x_bin_edges=np.histogram_bin_edges(x_array, bins='auto')
     y_bin_edges=np.histogram_bin_edges(y_array, bins='auto')
     
     #select the smaller amount of bins to ensure both x_array and y_array have well populated histograms 
     min_number_of_bins = min(len(x_bin_edges), len(y_bin_edges))
-
-    #create bin edges appropriate for both distributions
-    min_value = min(np.amin(x_array), np.amin(y_array))
-    max_value = min(np.amax(x_array), np.amax(y_array))
 
     bin_edges=np.linspace(min_value, max_value, min_number_of_bins)
     return bin_edges
