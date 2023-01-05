@@ -5,6 +5,7 @@ from scipy.spatial import distance
 import numpy as np
 import pandas as pd
 import random
+from evidently.calculations.stattests import jensenshannon_stat_test, wasserstein_stat_test
 from yaml import safe_load
 
 
@@ -56,12 +57,14 @@ def numerical_data_distribution_plot(x_array,y_array,bin_strategy="min"):
     fig = plt.figure(figsize=(10, 5))
 
     xlabel = 'Value'
-    title = ( 
+    title = (
+        f'Binning Strategy: {bin_strategy} \n' 
         f'{drift_evaluator(x_array,y_array,"jensen_shannon_distance_numerical", bin_strategy=bin_strategy)} \n'
+        f'JS Distance Evidently: {evaluate_evidently(jensenshannon_stat_test,x_array,y_array)} \n'
         #f'{drift_evaluator(x_array,y_array,"jensen_shannon_distance_aml")} \n'
-        f'{drift_evaluator(x_array,y_array,"normed_wasserstein_distance_numerical",bin_strategy=bin_strategy)} \n'
-        f'{drift_evaluator(x_array,y_array,"normed_wasserstein_distance_evi",bin_strategy=bin_strategy)} \n'
-        f'{drift_evaluator(x_array,y_array,"wasserstein_distance_aml",bin_strategy=bin_strategy)} \n'
+        f'{drift_evaluator(x_array,y_array,"normed_wasserstein_distance_numerical")} \n'
+        f'{drift_evaluator(x_array,y_array,"wasserstein_distance_aml")} \n'
+        f'Normed Wasserstein Distance Evidently: {evaluate_evidently(wasserstein_stat_test,x_array,y_array)} \n'
         f'{drift_evaluator(x_array,y_array,"two_sample_ks_test_numerical")} \n'
         )
 
@@ -123,37 +126,14 @@ def jensen_shannon_distance_aml(x_array, y_array):
     return distance.jensenshannon(current_ratios, reference_ratios)
 
 
-def normed_wasserstein_distance_numerical(x_array, y_array, bin_strategy="min"):
-
-    bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array, bin_strategy=bin_strategy)
-
-    x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array)
-    y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array)
-
-    norm = tstd(x_percent)
-
-    return wasserstein_distance(x_percent, y_percent) /norm
-
-
-    #x_hist, x_bin_edges = np.histogram(x_array, density = True, bins=bin_edges)
-    #y_hist, y_bin_edges = np.histogram(y_array, density = True, bins=bin_edges)
-
-    #x_hist_list = x_hist.tolist()
-    #y_hist_list = y_hist.tolist()
-
-    #norm = tstd(x_hist_list)
-
-    #return wasserstein_distance(x_hist_list, y_hist_list) / norm
-
-def normed_wasserstein_distance_evi(x_array, y_array):
-    norm = max(np.std(x_array), 0.001)
+def normed_wasserstein_distance_numerical(x_array, y_array):
+    norm = np.std(x_array)
     return wasserstein_distance(x_array, y_array) / norm
 
 def wasserstein_distance_aml(x_array, y_array):
     return wasserstein_distance(x_array, y_array)
 
 # --- STATISTICAL DISTANCE FUNCTIONS FOR CATEGORICAL FEATURES ---
-
 
 def jensen_shannon_distance_categorical(x_list, y_list):
     
@@ -191,30 +171,31 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
     acro = { 'jensen_shannon_distance_numerical':'JS',
             'jensen_shannon_distance_aml':'JS_AML',
             'normed_wasserstein_distance_numerical':'Wasserstein',
-            'normed_wasserstein_distance_evi':'Wasserstein_EVI',
             'wasserstein_distance_aml':'Wasserstein_AML',
             'jensen_shannon_distance_categorical':'JS',
             'two_sample_ks_test_numerical':'KS Test',
             'chi_squared_test_categorical':'Chi^2 Test'
     }
 
-    if drift_test in ['jensen_shannon_distance_numerical','normed_wasserstein_distance_numerical']:
+    if drift_test in ['jensen_shannon_distance_numerical']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y,bin_strategy=bin_strategy)
         if dist > float(config['thresholds'][drift_test]):
             drift_status = "drift detected"
         else:
             drift_status = "no drift"
-        return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
+        #return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
+        return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}"
     
-    if drift_test in ['jensen_shannon_distance_aml','jensen_shannon_distance_categorical', 'normed_wasserstein_distance_evi', 'wasserstein_distance_aml']:
+    if drift_test in ['jensen_shannon_distance_aml','jensen_shannon_distance_categorical', 'normed_wasserstein_distance_numerical', 'wasserstein_distance_aml']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y)
         if dist > float(config['thresholds'][drift_test]):
             drift_status = "drift detected"
         else:
             drift_status = "no drift"
-        return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
+        #return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
+        return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}"
 
     if drift_test in ['two_sample_ks_test_numerical','chi_squared_test_categorical']:
         stat_test = globals()[drift_test] # Select the appropriate function based on string
@@ -224,3 +205,11 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
         else:
             drift_status = "no drift"
         return f"{acro[drift_test]} p-value:{round(pvalue, config['significant_digits'])}; min:{config['thresholds'][drift_test]}; status:{drift_status}"
+
+# --- EVALUATE EVIDENTLY FUNCTIONS ---
+
+def evaluate_evidently(evidently_distance_function, x_array, y_array):
+    x_series = pd.Series(x_array) 
+    y_series = pd.Series(y_array) 
+    drift_score = evidently_distance_function(x_series,y_series, feature_type='num', threshold=0.1).drift_score
+    return round(drift_score, config['significant_digits'])
