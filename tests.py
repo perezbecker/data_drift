@@ -28,12 +28,12 @@ alpha_chi2 = config['thresholds']['chi_squared_test_categorical']
 # Generate test data
 sample_size = 100_000
 x1 = np.random.normal(50, 15, sample_size) # reference
-x3 = np.random.normal(50, 15, int(sample_size/3)) # reference
-x10 = np.random.normal(50, 15, int(sample_size/10)) # reference
+x3 = np.random.normal(50, 15, int(sample_size/10)) # reference
+x10 = np.random.normal(50, 15, int(sample_size/100)) # reference
 
 y1 = np.random.normal(62, 20, sample_size) # major drift 
-y3 = np.random.normal(62, 20, int(sample_size/3)) # major drift 
-y10 = np.random.normal(62, 20, int(sample_size/10)) # major drift 
+y3 = np.random.normal(62, 20, int(sample_size/10)) # major drift 
+y10 = np.random.normal(62, 20, int(sample_size/100)) # major drift 
 
 
 

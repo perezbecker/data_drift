@@ -5,8 +5,11 @@ significant_digits: 3
 test_epsilon: 0.05
 
 thresholds:
-  two_sample_ks_test_numerical: 0.05
-  chi_squared_test_categorical: 0.05
+  two_sample_ks_test_numerical: 0.01
+  chi_squared_test_categorical: 0.01
   jensen_shannon_distance_numerical: 0.1
+  jensen_shannon_distance_aml: 0.1
   normed_wasserstein_distance_numerical: 0.1
+  normed_wasserstein_distance_evi: 0.1
+  wasserstein_distance_aml: 0.1
   jensen_shannon_distance_categorical: 0.1
