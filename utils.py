@@ -5,7 +5,7 @@ from scipy.spatial import distance
 import numpy as np
 import pandas as pd
 import random
-from evidently.calculations.stattests import jensenshannon_stat_test, wasserstein_stat_test
+from evidently.calculations.stattests import jensenshannon_stat_test, wasserstein_stat_test, psi_stat_test
 from yaml import safe_load
 
 
@@ -60,11 +60,13 @@ def numerical_data_distribution_plot(x_array,y_array,bin_strategy="min"):
     title = (
         f'Binning Strategy: {bin_strategy} \n' 
         f'{drift_evaluator(x_array,y_array,"jensen_shannon_distance_numerical", bin_strategy=bin_strategy)} \n'
-        f'JS Distance Evidently: {evaluate_evidently(jensenshannon_stat_test,x_array,y_array)} \n'
+        f'JS Distance Evidently: {evaluate_evidently(jensenshannon_stat_test, x_array, y_array, feature_type="num")} \n'
         #f'{drift_evaluator(x_array,y_array,"jensen_shannon_distance_aml")} \n'
         f'{drift_evaluator(x_array,y_array,"normed_wasserstein_distance_numerical")} \n'
         f'{drift_evaluator(x_array,y_array,"wasserstein_distance_aml")} \n'
-        f'Normed Wasserstein Distance Evidently: {evaluate_evidently(wasserstein_stat_test,x_array,y_array)} \n'
+        f'Normed Wasserstein Distance Evidently: {evaluate_evidently(wasserstein_stat_test,x_array,y_array, feature_type="num")} \n'
+        f'{drift_evaluator(x_array,y_array,"psi_numerical", bin_strategy=bin_strategy)} \n'
+        f'PSI Evidently: {evaluate_evidently(psi_stat_test,x_array,y_array, feature_type="num")} \n'
         f'{drift_evaluator(x_array,y_array,"two_sample_ks_test_numerical")} \n'
         )
 
@@ -89,6 +91,9 @@ def categorical_grouped_bar_plot(x_list, y_list, title="", normalize = True):
 
     title= (
         f'{drift_evaluator(x_list,y_list,"jensen_shannon_distance_categorical")} \n'
+        f'JS Distance Evidently: {evaluate_evidently(jensenshannon_stat_test, x_list, y_list, feature_type="cat")} \n'
+        f'{drift_evaluator(x_list,y_list,"psi_categorical")} \n'
+        f'PSI Evidently: {evaluate_evidently(psi_stat_test, x_list, y_list, feature_type="cat")} \n'
         f'{drift_evaluator(x_list,y_list,"chi_squared_test_categorical")} \n'
         )
     
@@ -108,9 +113,8 @@ def two_sample_ks_test_numerical(x_array, y_array):
 # --- STATISTICAL DISTANCE FUNCTIONS FOR NUMERICAL FEATURES ---
 
 
-def jensen_shannon_distance_numerical(x_array, y_array, bin_strategy="min"):
+def jensen_shannon_distance_numerical(x_array, y_array, bin_strategy='min'):
     bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array,bin_strategy=bin_strategy)
-
     x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array)
     y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array)
 
@@ -133,6 +137,45 @@ def normed_wasserstein_distance_numerical(x_array, y_array):
 def wasserstein_distance_aml(x_array, y_array):
     return wasserstein_distance(x_array, y_array)
 
+
+def psi_numerical(x_array, y_array, bin_strategy='min', smoothing='evi'):
+    bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array,bin_strategy=bin_strategy)
+    
+    # two smoothing options to avoid zero values in bins and have the SPI value be finite.
+    # laplace smoothing by incrementing the count of each bin by 1 (see https://docs.fiddler.ai/docs/data-drift)
+    # an alternative is to increment percentage bins by epsilon ~ 0.0001 as done by the feel_zeroes flag in Evidently:
+    # https://github.com/evidentlyai/evidently/blob/main/src/evidently/calculations/stattests/utils.py 
+
+
+    if smoothing == 'fid':
+        x_count = np.histogram(x_array, bins=bin_edges)[0]
+        y_count = np.histogram(y_array, bins=bin_edges)[0] 
+
+        x_count = x_count + 1
+        y_count = y_count + 1 
+
+        x_percent = x_count / len(x_array) 
+        y_percent = y_count / len(y_array)   
+
+        psi = 0.0
+        for i in range(len(x_percent)):
+            psi += (y_percent[i] - x_percent[i]) * np.log(y_percent[i] / x_percent[i])
+    
+    elif smoothing == 'evi':
+        x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array)
+        y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array)
+
+        np.place(x_percent, x_percent == 0, config['laplace_smoothing_epsilon'])
+        np.place(y_percent, y_percent == 0, config['laplace_smoothing_epsilon'])
+
+        psi = 0.0
+        for i in range(len(x_percent)):
+            psi += (y_percent[i] - x_percent[i]) * np.log(y_percent[i] / x_percent[i])    
+    else:
+        raise ValueError("smoothing must be either 'fid' or 'evi'")
+    
+    return psi
+
 # --- STATISTICAL DISTANCE FUNCTIONS FOR CATEGORICAL FEATURES ---
 
 def jensen_shannon_distance_categorical(x_list, y_list):
@@ -140,13 +183,53 @@ def jensen_shannon_distance_categorical(x_list, y_list):
     # unique values observed in x and y
     values = set(x_list + y_list)
         
-    x_freqs = np.array([x_list.count(value) for value in values])
-    y_freqs = np.array([y_list.count(value) for value in values])
+    x_counts = np.array([x_list.count(value) for value in values])
+    y_counts = np.array([y_list.count(value) for value in values])
     
-    x_ratios = x_freqs / np.sum(x_freqs)  #Optional as JS-D normalizes probability vectors
-    y_ratios = y_freqs / np.sum(y_freqs)
+    x_ratios = x_counts / np.sum(x_counts)  #Optional as JS-D normalizes probability vectors
+    y_ratios = y_counts / np.sum(y_counts)
 
     return distance.jensenshannon(x_ratios, y_ratios)
+
+def psi_categorical(x_list, y_list, smoothing = 'evi'):
+        
+    # unique values observed in x and y
+    values = set(x_list + y_list)
+        
+    x_counts = np.array([x_list.count(value) for value in values])
+    y_counts = np.array([y_list.count(value) for value in values])
+
+
+    if smoothing == 'fid':
+    
+        x_counts = x_counts + 1
+        y_counts = y_counts + 1
+
+        x_ratios = x_counts / np.sum(x_counts)
+        y_ratios = y_counts / np.sum(y_counts)
+
+        psi = 0
+        for i in range(len(x_ratios)):
+            psi += (y_ratios[i] - x_ratios[i]) * np.log(y_ratios[i] / x_ratios[i])
+    
+    elif smoothing == 'evi':
+
+        x_ratios = x_counts / np.sum(x_counts)
+        y_ratios = y_counts / np.sum(y_counts)
+
+        psi = 0
+        for i in range(len(x_ratios)):
+            if x_ratios[i] == 0:
+                x_ratios[i] = config['laplace_smoothing_epsilon']
+            if y_ratios[i] == 0:
+                y_ratios[i] = config['laplace_smoothing_epsilon']
+            
+            psi += (y_ratios[i] - x_ratios[i]) * np.log(y_ratios[i] / x_ratios[i])    
+    else:
+        raise ValueError("smoothing must be either 'fid' or 'evi'")
+    
+    return psi
+
 
 # --- STATISTICAL TESTS FOR NUMERICAL FEATURES ---
 
@@ -172,12 +255,14 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
             'jensen_shannon_distance_aml':'JS_AML',
             'normed_wasserstein_distance_numerical':'Wasserstein',
             'wasserstein_distance_aml':'Wasserstein_AML',
+            'psi_numerical':'PSI',
             'jensen_shannon_distance_categorical':'JS',
+            'psi_categorical':'PSI',
             'two_sample_ks_test_numerical':'KS Test',
             'chi_squared_test_categorical':'Chi^2 Test'
     }
 
-    if drift_test in ['jensen_shannon_distance_numerical']:
+    if drift_test in ['jensen_shannon_distance_numerical','psi_numerical']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y,bin_strategy=bin_strategy)
         if dist > float(config['thresholds'][drift_test]):
@@ -187,7 +272,7 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
         #return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
         return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}"
     
-    if drift_test in ['jensen_shannon_distance_aml','jensen_shannon_distance_categorical', 'normed_wasserstein_distance_numerical', 'wasserstein_distance_aml']:
+    if drift_test in ['jensen_shannon_distance_aml','jensen_shannon_distance_categorical', 'normed_wasserstein_distance_numerical', 'wasserstein_distance_aml', 'psi_categorical']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y)
         if dist > float(config['thresholds'][drift_test]):
@@ -208,8 +293,8 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
 
 # --- EVALUATE EVIDENTLY FUNCTIONS ---
 
-def evaluate_evidently(evidently_distance_function, x_array, y_array):
+def evaluate_evidently(evidently_distance_function, x_array, y_array, feature_type='num'):
     x_series = pd.Series(x_array) 
     y_series = pd.Series(y_array) 
-    drift_score = evidently_distance_function(x_series,y_series, feature_type='num', threshold=0.1).drift_score
+    drift_score = evidently_distance_function(x_series,y_series, feature_type=feature_type, threshold=0.1).drift_score
     return round(drift_score, config['significant_digits'])

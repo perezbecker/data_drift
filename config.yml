@@ -2,6 +2,8 @@ project_name: data-drift-test
 
 significant_digits: 3
 
+laplace_smoothing_epsilon: 0.0001
+
 test_epsilon: 0.05
 
 thresholds:
@@ -10,6 +12,7 @@ thresholds:
   jensen_shannon_distance_numerical: 0.1
   jensen_shannon_distance_aml: 0.1
   normed_wasserstein_distance_numerical: 0.1
-  normed_wasserstein_distance_evi: 0.1
   wasserstein_distance_aml: 0.1
+  psi_numerical: 0.2
   jensen_shannon_distance_categorical: 0.1
+  psi_categorical: 0.2
