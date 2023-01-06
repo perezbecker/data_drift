@@ -12,6 +12,8 @@ The demo notebook is `data_drift_demo.ipynb`. It contains a demo of the data dri
 **Distances**
 - **Jensen-Shannon (JS) Distance** - Numerical and Categorical Features
 - **Normed Wasserstein Distance** - Numerical Features
+- **PSI (Population Stability Index)** - Numerical Features and Categorical Features
+- **d_inf (Chebyshev distance on discrete probability distributions)** - Numerical Features and Categorical Features
 
 
 ## Features 
