@@ -67,6 +67,7 @@ def numerical_data_distribution_plot(x_array,y_array,bin_strategy="min"):
         f'Normed Wasserstein Distance Evidently: {evaluate_evidently(wasserstein_stat_test,x_array,y_array, feature_type="num")} \n'
         f'{drift_evaluator(x_array,y_array,"psi_numerical", bin_strategy=bin_strategy)} \n'
         f'PSI Evidently: {evaluate_evidently(psi_stat_test,x_array,y_array, feature_type="num")} \n'
+        f'{drift_evaluator(x_array,y_array,"d_inf_numerical", bin_strategy=bin_strategy)} \n'
         f'{drift_evaluator(x_array,y_array,"two_sample_ks_test_numerical")} \n'
         )
 
@@ -94,6 +95,7 @@ def categorical_grouped_bar_plot(x_list, y_list, title="", normalize = True):
         f'JS Distance Evidently: {evaluate_evidently(jensenshannon_stat_test, x_list, y_list, feature_type="cat")} \n'
         f'{drift_evaluator(x_list,y_list,"psi_categorical")} \n'
         f'PSI Evidently: {evaluate_evidently(psi_stat_test, x_list, y_list, feature_type="cat")} \n'
+        f'{drift_evaluator(x_list,y_list,"d_inf_categorical")} \n'
         f'{drift_evaluator(x_list,y_list,"chi_squared_test_categorical")} \n'
         )
     
@@ -176,6 +178,12 @@ def psi_numerical(x_array, y_array, bin_strategy='min', smoothing='evi'):
     
     return psi
 
+def d_inf_numerical(x_array, y_array, bin_strategy='min'):
+    bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array,bin_strategy=bin_strategy)
+    x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array)
+    y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array)
+    return distance.chebyshev(x_percent, y_percent) 
+
 # --- STATISTICAL DISTANCE FUNCTIONS FOR CATEGORICAL FEATURES ---
 
 def jensen_shannon_distance_categorical(x_list, y_list):
@@ -230,6 +238,18 @@ def psi_categorical(x_list, y_list, smoothing = 'evi'):
     
     return psi
 
+def d_inf_categorical(x_list, y_list):
+
+    # unique values observed in x and y
+    values = set(x_list + y_list)
+        
+    x_counts = np.array([x_list.count(value) for value in values])
+    y_counts = np.array([y_list.count(value) for value in values])
+
+    x_ratios = x_counts / np.sum(x_counts)
+    y_ratios = y_counts / np.sum(y_counts)
+
+    return distance.chebyshev(x_ratios, y_ratios)
 
 # --- STATISTICAL TESTS FOR NUMERICAL FEATURES ---
 
@@ -256,13 +276,15 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
             'normed_wasserstein_distance_numerical':'Wasserstein',
             'wasserstein_distance_aml':'Wasserstein_AML',
             'psi_numerical':'PSI',
+            'd_inf_numerical':'d_inf',
             'jensen_shannon_distance_categorical':'JS',
             'psi_categorical':'PSI',
+            'd_inf_categorical':'d_inf',
             'two_sample_ks_test_numerical':'KS Test',
             'chi_squared_test_categorical':'Chi^2 Test'
     }
 
-    if drift_test in ['jensen_shannon_distance_numerical','psi_numerical']:
+    if drift_test in ['jensen_shannon_distance_numerical','psi_numerical', 'd_inf_numerical']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y,bin_strategy=bin_strategy)
         if dist > float(config['thresholds'][drift_test]):
@@ -270,9 +292,9 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
         else:
             drift_status = "no drift"
         #return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
-        return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}"
+        return f"{acro[drift_test]}: {round(dist, config['significant_digits'])}"
     
-    if drift_test in ['jensen_shannon_distance_aml','jensen_shannon_distance_categorical', 'normed_wasserstein_distance_numerical', 'wasserstein_distance_aml', 'psi_categorical']:
+    if drift_test in ['jensen_shannon_distance_aml','jensen_shannon_distance_categorical', 'normed_wasserstein_distance_numerical', 'wasserstein_distance_aml', 'psi_categorical','d_inf_categorical']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y)
         if dist > float(config['thresholds'][drift_test]):
@@ -280,7 +302,7 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
         else:
             drift_status = "no drift"
         #return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
-        return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}"
+        return f"{acro[drift_test]}: {round(dist, config['significant_digits'])}"
 
     if drift_test in ['two_sample_ks_test_numerical','chi_squared_test_categorical']:
         stat_test = globals()[drift_test] # Select the appropriate function based on string
