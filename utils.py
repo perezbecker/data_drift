@@ -26,24 +26,37 @@ def compute_optimal_histogram_bin_edges(x_array,y_array, bin_strategy="min"):
     x_array_extended = np.append(x_array,[min_value, max_value])
     y_array_extended = np.append(y_array,[min_value, max_value])    
 
-    #compute optimal bin edges for both distributions after having been extended to [min_value,max_value]
-    x_bin_edges=np.histogram_bin_edges(x_array_extended, bins='auto')
-    y_bin_edges=np.histogram_bin_edges(y_array_extended, bins='auto')
-    
     #select the amount of bins used. The smaller amount of bins is recommended to ensure both x_array and y_array have well populated histograms 
-    if bin_strategy == "min":
+    if min_value == max_value:
+        number_of_bins = 1
+        bin_edges = np.array([min_value/1.01, min_value*1.01])
+    
+    elif bin_strategy == "min":
+        #compute optimal bin edges for both distributions after having been extended to [min_value,max_value]
+        x_bin_edges=np.histogram_bin_edges(x_array_extended, bins='auto')
+        y_bin_edges=np.histogram_bin_edges(y_array_extended, bins='auto')
         number_of_bins = min(len(x_bin_edges), len(y_bin_edges))
         bin_edges=np.linspace(min_value, max_value, number_of_bins)
     
     elif bin_strategy == "max":
+        #compute optimal bin edges for both distributions after having been extended to [min_value,max_value]
+        x_bin_edges=np.histogram_bin_edges(x_array_extended, bins='auto')
+        y_bin_edges=np.histogram_bin_edges(y_array_extended, bins='auto')
         number_of_bins = max(len(x_bin_edges), len(y_bin_edges))
         bin_edges=np.linspace(min_value, max_value, number_of_bins)
 
+    elif bin_strategy == "stu":
+        #compute optimal bin edges for both distributions after having been extended to [min_value,max_value]
+        x_bin_edges=np.histogram_bin_edges(x_array_extended, bins='sturges')
+        y_bin_edges=np.histogram_bin_edges(y_array_extended, bins='sturges')
+        number_of_bins = min(len(x_bin_edges), len(y_bin_edges))
+        bin_edges=np.linspace(min_value, max_value, number_of_bins)
+    
     elif bin_strategy == "evi":
         bin_edges = np.histogram_bin_edges(list(x_array)+list(y_array), bins='sturges')
     
     else:
-        raise ValueError("bin_strategy must be either 'min', 'max', or 'evi'")
+        raise ValueError("bin_strategy must be either 'min', 'max', 'stu', or 'evi'")
 
     return bin_edges
 
@@ -138,8 +151,6 @@ def wasserstein_distance_on_probability_distribution_numerical(x_array, y_array,
     x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array) * 100000
     y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array) * 100000
 
-    
-
     for i in range(len(x_percent)):
         xobs=np.full(int(x_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of x_percent observations with value of the bin
         yobs=np.full(int(y_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of y_percent observations with value of the bin
@@ -161,7 +172,7 @@ def wasserstein_distance_aml(x_array, y_array):
     return wasserstein_distance(x_array, y_array)
 
 
-def psi_numerical(x_array, y_array, bin_strategy='min', smoothing='evi'):
+def psi_numerical(x_array, y_array, bin_strategy='min', smoothing='fid'):
     bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array,bin_strategy=bin_strategy)
     
     # two smoothing options to avoid zero values in bins and have the SPI value be finite.
