@@ -63,8 +63,9 @@ def numerical_data_distribution_plot(x_array,y_array,bin_strategy="min"):
         f'JS Distance Evidently: {evaluate_evidently(jensenshannon_stat_test, x_array, y_array, feature_type="num")} \n'
         #f'{drift_evaluator(x_array,y_array,"jensen_shannon_distance_aml")} \n'
         f'{drift_evaluator(x_array,y_array,"normed_wasserstein_distance_numerical")} \n'
-        f'{drift_evaluator(x_array,y_array,"wasserstein_distance_aml")} \n'
         f'Normed Wasserstein Distance Evidently: {evaluate_evidently(wasserstein_stat_test,x_array,y_array, feature_type="num")} \n'
+        f'{drift_evaluator(x_array,y_array,"wasserstein_distance_aml")} \n'
+        f'{drift_evaluator(x_array,y_array,"wasserstein_distance_on_probability_distribution_numerical")} \n'
         f'{drift_evaluator(x_array,y_array,"psi_numerical", bin_strategy=bin_strategy)} \n'
         f'PSI Evidently: {evaluate_evidently(psi_stat_test,x_array,y_array, feature_type="num")} \n'
         f'{drift_evaluator(x_array,y_array,"d_inf_numerical", bin_strategy=bin_strategy)} \n'
@@ -116,7 +117,7 @@ def two_sample_ks_test_numerical(x_array, y_array):
 
 
 def jensen_shannon_distance_numerical(x_array, y_array, bin_strategy='min'):
-    bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array,bin_strategy=bin_strategy)
+    bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array, bin_strategy=bin_strategy)
     x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array)
     y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array)
 
@@ -132,8 +133,28 @@ def jensen_shannon_distance_aml(x_array, y_array):
     return distance.jensenshannon(current_ratios, reference_ratios)
 
 
+def wasserstein_distance_on_probability_distribution_numerical(x_array, y_array, bin_strategy='min'):
+    bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array, bin_strategy=bin_strategy)
+    x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array) * 100000
+    y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array) * 100000
+
+    
+
+    for i in range(len(x_percent)):
+        xobs=np.full(int(x_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of x_percent observations with value of the bin
+        yobs=np.full(int(y_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of y_percent observations with value of the bin
+        if i == 0:
+            agg_xobs = xobs
+            agg_yobs = yobs
+        else:
+            agg_xobs = np.append(agg_xobs,xobs) 
+            agg_yobs = np.append(agg_yobs,yobs) 
+
+    return wasserstein_distance(agg_xobs, agg_yobs)
+
+
 def normed_wasserstein_distance_numerical(x_array, y_array):
-    norm = np.std(x_array)
+    norm = max(np.std(x_array),0.001)
     return wasserstein_distance(x_array, y_array) / norm
 
 def wasserstein_distance_aml(x_array, y_array):
@@ -273,7 +294,8 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
     drift_status = ""
     acro = { 'jensen_shannon_distance_numerical':'JS',
             'jensen_shannon_distance_aml':'JS_AML',
-            'normed_wasserstein_distance_numerical':'Wasserstein',
+            'normed_wasserstein_distance_numerical':'Normed_Wasserstein',
+            'wasserstein_distance_on_probability_distribution_numerical':'Wasserstein_Prob_Dist',
             'wasserstein_distance_aml':'Wasserstein_AML',
             'psi_numerical':'PSI',
             'd_inf_numerical':'d_inf',
@@ -284,7 +306,7 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
             'chi_squared_test_categorical':'Chi^2 Test'
     }
 
-    if drift_test in ['jensen_shannon_distance_numerical','psi_numerical', 'd_inf_numerical']:
+    if drift_test in ['jensen_shannon_distance_numerical','wasserstein_distance_on_probability_distribution_numerical','psi_numerical', 'd_inf_numerical']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y,bin_strategy=bin_strategy)
         if dist > float(config['thresholds'][drift_test]):
