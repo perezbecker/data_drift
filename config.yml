@@ -1,6 +1,6 @@
 project_name: data-drift-test
 
-significant_digits: 10
+significant_digits: 4
 
 laplace_smoothing_epsilon: 0.0001
 
@@ -9,8 +9,8 @@ test_epsilon: 0.05
 thresholds:
   two_sample_ks_test_numerical: 0.01
   chi_squared_test_categorical: 0.01
-  d_inf_numerical: 0.01
-  d_inf_categorical: 0.01
+  d_inf_numerical: 0.02
+  d_inf_categorical: 0.02
   jensen_shannon_distance_numerical: 0.1
   jensen_shannon_distance_aml: 0.1
   normed_wasserstein_distance_numerical: 0.1

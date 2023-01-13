@@ -72,21 +72,21 @@ def numerical_data_distribution_plot(x_array,y_array,bin_strategy="min"):
     xlabel = 'Value'
     title = (
         f'Binning Strategy: {bin_strategy} \n' 
-        f'{drift_evaluator(x_array,y_array,"jensen_shannon_distance_numerical", bin_strategy=bin_strategy)} \n'
-        f'JS Distance Evidently: {evaluate_evidently(jensenshannon_stat_test, x_array, y_array, feature_type="num")} \n'
+        #f'{drift_evaluator(x_array,y_array,"jensen_shannon_distance_numerical", bin_strategy=bin_strategy)} \n'
+        #f'JS Distance Evidently: {evaluate_evidently(jensenshannon_stat_test, x_array, y_array, feature_type="num")} \n'
         #f'{drift_evaluator(x_array,y_array,"jensen_shannon_distance_aml")} \n'
-        f'{drift_evaluator(x_array,y_array,"normed_wasserstein_distance_numerical")} \n'
-        f'Normed Wasserstein Distance Evidently: {evaluate_evidently(wasserstein_stat_test,x_array,y_array, feature_type="num")} \n'
-        f'{drift_evaluator(x_array,y_array,"wasserstein_distance_aml")} \n'
-        f'{drift_evaluator(x_array,y_array,"wasserstein_distance_on_probability_distribution_numerical")} \n'
-        f'{drift_evaluator(x_array,y_array,"psi_numerical", bin_strategy=bin_strategy)} \n'
-        f'PSI Evidently: {evaluate_evidently(psi_stat_test,x_array,y_array, feature_type="num")} \n'
-        f'{drift_evaluator(x_array,y_array,"d_inf_numerical", bin_strategy=bin_strategy)} \n'
-        f'{drift_evaluator(x_array,y_array,"two_sample_ks_test_numerical")} \n'
+        #f'{drift_evaluator(x_array,y_array,"normed_wasserstein_distance_numerical")} \n'
+        #f'Normed Wasserstein Distance Evidently: {evaluate_evidently(wasserstein_stat_test,x_array,y_array, feature_type="num")} \n'
+        #f'{drift_evaluator(x_array,y_array,"wasserstein_distance_aml")} \n'
+        #f'{drift_evaluator(x_array,y_array,"wasserstein_distance_on_probability_distribution_numerical")} \n'
+        #f'{drift_evaluator(x_array,y_array,"psi_numerical", bin_strategy=bin_strategy)} \n'
+        #f'PSI Evidently: {evaluate_evidently(psi_stat_test,x_array,y_array, feature_type="num")} \n'
+        #f'{drift_evaluator(x_array,y_array,"d_inf_numerical", bin_strategy=bin_strategy)} \n'
+        #f'{drift_evaluator(x_array,y_array,"two_sample_ks_test_numerical")} \n'
         )
 
-    sns.histplot(data=x_array, bins=bin_edges, legend=False, stat='density', color='blue').set(title=title,xlabel=xlabel)
-    sns.histplot(data=y_array, bins=bin_edges, legend=False, stat='density', color='orange')
+    sns.histplot(data=x_array, bins=bin_edges, legend=False, stat='density', color='blue', alpha=0.5).set(title=title,xlabel=xlabel)
+    sns.histplot(data=y_array, bins=bin_edges, legend=False, stat='density', color='orange', alpha=0.5)
     
     return fig
 
@@ -134,7 +134,7 @@ def jensen_shannon_distance_numerical(x_array, y_array, bin_strategy='min'):
     x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array)
     y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array)
 
-    return distance.jensenshannon(x_percent, y_percent)
+    return distance.jensenshannon(x_percent, y_percent, base=2)
 
 
 def jensen_shannon_distance_aml(x_array, y_array):
@@ -208,7 +208,7 @@ def psi_numerical(x_array, y_array, bin_strategy='min', smoothing='fid'):
     else:
         raise ValueError("smoothing must be either 'fid' or 'evi'")
     
-    return psi
+    return round(psi, config['significant_digits'])
 
 def d_inf_numerical(x_array, y_array, bin_strategy='min'):
     bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array,bin_strategy=bin_strategy)
@@ -300,7 +300,7 @@ def chi_squared_test_categorical(x_list, y_list):
 
 # --- DRIFT EVALUATOR ---
 
-def drift_evaluator(x,y,drift_test,bin_strategy='min'):
+def drift_evaluator(x,y,drift_test,bin_strategy='min',output='summary'):
 
     drift_status = ""
     acro = { 'jensen_shannon_distance_numerical':'JS',
@@ -324,9 +324,20 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
             drift_status = "drift detected"
         else:
             drift_status = "no drift"
-        #return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
-        return f"{acro[drift_test]}: {round(dist, config['significant_digits'])}"
-    
+        
+        if output == 'verbose':
+            return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
+        elif output == 'summary':
+            return f"{acro[drift_test]}: {round(dist, config['significant_digits'])}"
+        elif output == 'distance_and_drift_detection':
+            return round(dist,config['significant_digits']), drift_status
+        elif output == 'distance':
+            return round(dist,config['significant_digits'])
+        elif output == 'drift_detection':
+            return drift_status
+        else:
+            raise ValueError("output must be 'verbose', 'summary', 'distance_and_drift_detection', 'distance' or 'drift_detection'")
+            
     if drift_test in ['jensen_shannon_distance_aml','jensen_shannon_distance_categorical', 'normed_wasserstein_distance_numerical', 'wasserstein_distance_aml', 'psi_categorical','d_inf_categorical']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y)
@@ -334,8 +345,18 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
             drift_status = "drift detected"
         else:
             drift_status = "no drift"
-        #return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
-        return f"{acro[drift_test]}: {round(dist, config['significant_digits'])}"
+        if output == "verbose":
+            return f"{acro[drift_test]} Distance: {round(dist, config['significant_digits'])}; max:{config['thresholds'][drift_test]}; status:{drift_status}"
+        elif output == 'summary':
+            return f"{acro[drift_test]}: {round(dist, config['significant_digits'])}"
+        elif output == 'distance_and_drift_detection':
+            return round(dist,config['significant_digits']), drift_status
+        elif output == 'distance':
+            return round(dist,config['significant_digits'])
+        elif output == 'drift_detection':
+            return drift_status
+        else:
+            raise ValueError("output must be 'verbose', 'summary', 'distance_and_drift_detection', 'distance', or 'drift_detection'")
 
     if drift_test in ['two_sample_ks_test_numerical','chi_squared_test_categorical']:
         stat_test = globals()[drift_test] # Select the appropriate function based on string
@@ -344,7 +365,19 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min'):
             drift_status = "drift detected"
         else:
             drift_status = "no drift"
-        return f"{acro[drift_test]} p-value:{round(pvalue, config['significant_digits'])}; min:{config['thresholds'][drift_test]}; status:{drift_status}"
+        if output == "verbose":
+            return f"{acro[drift_test]} p-value:{round(pvalue, config['significant_digits'])}; min:{config['thresholds'][drift_test]}; status:{drift_status}"
+        elif output == 'summary':
+            return f"{acro[drift_test]}: {round(pvalue, config['significant_digits'])}"
+        elif output == 'distance_and_drift_detection':
+            return round(pvalue,config['significant_digits']), drift_status
+        elif output == 'distance':
+            return round(pvalue,config['significant_digits'])
+        elif output == 'drift_detection':
+            return drift_status
+        else:
+            raise ValueError("output must be 'verbose', 'summary', 'distance_and_drift_detection', distance', or 'drift_detection'")
+        
 
 # --- EVALUATE EVIDENTLY FUNCTIONS ---
 
@@ -353,3 +386,91 @@ def evaluate_evidently(evidently_distance_function, x_array, y_array, feature_ty
     y_series = pd.Series(y_array) 
     drift_score = evidently_distance_function(x_series,y_series, feature_type=feature_type, threshold=0.1).drift_score
     return round(drift_score, config['significant_digits'])
+
+
+
+# --- CREATE BIN STRATEGY TABLES ---
+
+def list_of_distances_by_bin_strategy(x,y,drift_metric, output='distance'):
+    return list(map(lambda bin_strategy: drift_evaluator(x,y,drift_metric,bin_strategy=bin_strategy, output=output),['stu','evi','min','max']))
+
+
+
+def create_drift_metric_comparison_table_numerical(x,y,bin_strategy='stu'):
+    """
+    Create a table of the drift metrics for numerical data.
+    """
+    drift_metrics = {
+        'Jensen-Shannon Distance':drift_evaluator(x,y,"jensen_shannon_distance_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
+        'Normed Wasserstein Distance':drift_evaluator(x,y,"normed_wasserstein_distance_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
+        'PSI':drift_evaluator(x,y,"psi_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
+        'D_inf':drift_evaluator(x,y,"d_inf_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
+        'KS Test':drift_evaluator(x,y,"two_sample_ks_test_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
+    }
+    return pd.DataFrame(drift_metrics,index=['Distance','Drift Detection']).T
+
+
+def create_comparison_with_evidently_table_numerical(x,y):
+
+    drift_metrics = {
+        'Jensen-Shannon Distance':(drift_evaluator(x,y,"jensen_shannon_distance_numerical", bin_strategy='evi', output='distance'), evaluate_evidently(jensenshannon_stat_test, x, y, feature_type="num")),
+        'Wasserstein Distance':(drift_evaluator(x,y,"normed_wasserstein_distance_numerical", bin_strategy='evi', output='distance'), evaluate_evidently(wasserstein_stat_test, x, y, feature_type="num")),
+        'PSI':(psi_numerical(x, y, bin_strategy='evi', smoothing='evi'), evaluate_evidently(psi_stat_test, x, y, feature_type="num")),
+    }
+    return pd.DataFrame(drift_metrics,index=['Local','Evidently']).T
+
+
+def create_bin_strategy_comparison_table_numerical(x,y, output='distance'):
+    """
+    """
+    drift_metrics = {
+        'Number of Bins': list(map(lambda bin_strategy: int(len(compute_optimal_histogram_bin_edges(x,y,bin_strategy=bin_strategy))-1),['stu','evi','min','max'])),
+        'Jensen-Shannon Distance':list_of_distances_by_bin_strategy(x,y,"jensen_shannon_distance_numerical", output=output),
+        'Normed Wasserstein Distance':list_of_distances_by_bin_strategy(x,y,"normed_wasserstein_distance_numerical", output=output),
+        'PSI':list_of_distances_by_bin_strategy(x,y,"psi_numerical", output=output),
+        'D_inf':list_of_distances_by_bin_strategy(x,y,"d_inf_numerical", output=output),
+        'KS Test':list_of_distances_by_bin_strategy(x,y,"two_sample_ks_test_numerical", output=output),
+    }
+    return pd.DataFrame(drift_metrics,index=['stu','evi','min','max']).T
+
+
+def create_sample_size_comparison_table_numerical(x,y,drift_metric, output='distance'):
+
+    def sample(y, fraction):
+        return np.random.choice(y, size=int(len(y)*fraction), replace=False)
+    
+    y10 = sample(y,0.1)
+    y100 = sample(y,0.01)
+    y1000 = sample(y,0.001)
+    y10000 = sample(y,0.0001)
+
+    
+    drift_metrics = {
+        'Full Sample': list_of_distances_by_bin_strategy(x,y,drift_metric, output=output),
+        '1/10th Sample': list_of_distances_by_bin_strategy(x,y10,drift_metric, output=output),
+        '1/100th Sample': list_of_distances_by_bin_strategy(x,y100,drift_metric, output=output),
+        '1/1000th Sample': list_of_distances_by_bin_strategy(x,y1000,drift_metric, output=output),
+        '1/10,000th Sample': list_of_distances_by_bin_strategy(x,y10000,drift_metric, output=output),
+    }
+    return pd.DataFrame(drift_metrics,index=['stu','evi','min','max']).T
+
+
+def create_sample_size_bin_comparison_table_numerical(x,y):
+
+    def sample(y, fraction):
+        return np.random.choice(y, size=int(len(y)*fraction), replace=False)
+    
+    y10 = sample(y,0.1)
+    y100 = sample(y,0.01)
+    y1000 = sample(y,0.001)
+    y10000 = sample(y,0.0001)
+
+    
+    drift_metrics = {
+        'Bins Full Sample': list(map(lambda bin_strategy: int(len(compute_optimal_histogram_bin_edges(x,y,bin_strategy=bin_strategy))-1),['stu','evi','min','max'])),
+        'Bins 1/10th Sample': list(map(lambda bin_strategy: int(len(compute_optimal_histogram_bin_edges(x,y10,bin_strategy=bin_strategy))-1),['stu','evi','min','max'])),
+        'Bins 1/100th Sample': list(map(lambda bin_strategy: int(len(compute_optimal_histogram_bin_edges(x,y100,bin_strategy=bin_strategy))-1),['stu','evi','min','max'])),
+        'Bins 1/1000th Sample': list(map(lambda bin_strategy: int(len(compute_optimal_histogram_bin_edges(x,y1000,bin_strategy=bin_strategy))-1),['stu','evi','min','max'])),
+        'Bins 1/10,000th Sample': list(map(lambda bin_strategy: int(len(compute_optimal_histogram_bin_edges(x,y10000,bin_strategy=bin_strategy))-1),['stu','evi','min','max'])),
+    }
+    return pd.DataFrame(drift_metrics,index=['stu','evi','min','max']).T
