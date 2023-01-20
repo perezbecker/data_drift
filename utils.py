@@ -148,20 +148,20 @@ def jensen_shannon_distance_aml(x_array, y_array):
 
 def wasserstein_distance_on_probability_distribution_numerical(x_array, y_array, bin_strategy='min'):
     bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array, bin_strategy=bin_strategy)
-    x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array) * 100000
-    y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array) * 100000
+    x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array)
+    y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array)
 
-    for i in range(len(x_percent)):
-        xobs=np.full(int(x_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of x_percent observations with value of the bin
-        yobs=np.full(int(y_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of y_percent observations with value of the bin
-        if i == 0:
-            agg_xobs = xobs
-            agg_yobs = yobs
-        else:
-            agg_xobs = np.append(agg_xobs,xobs) 
-            agg_yobs = np.append(agg_yobs,yobs) 
+    #for i in range(len(x_percent)):
+    #    xobs=np.full(int(x_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of x_percent observations with value of the bin
+    #    yobs=np.full(int(y_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of y_percent observations with value of the bin
+    #    if i == 0:
+    #        agg_xobs = xobs
+    #        agg_yobs = yobs
+    #    else:
+    #        agg_xobs = np.append(agg_xobs,xobs) 
+    #        agg_yobs = np.append(agg_yobs,yobs) 
 
-    return wasserstein_distance(agg_xobs, agg_yobs)
+    return wasserstein_distance(x_percent, y_percent)
 
 
 def normed_wasserstein_distance_numerical(x_array, y_array):
