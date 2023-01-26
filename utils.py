@@ -229,7 +229,7 @@ def jensen_shannon_distance_categorical(x_list, y_list):
     x_ratios = x_counts / np.sum(x_counts)  #Optional as JS-D normalizes probability vectors
     y_ratios = y_counts / np.sum(y_counts)
 
-    return distance.jensenshannon(x_ratios, y_ratios)
+    return distance.jensenshannon(x_ratios, y_ratios, base=2)
 
 def psi_categorical(x_list, y_list, smoothing = 'evi'):
         
