@@ -291,10 +291,10 @@ def chi_squared_test_categorical(x_list, y_list):
     x_counts = np.array([x_list.count(value) for value in values])
     y_counts = np.array([y_list.count(value) for value in values])
 
-    y_ratios = y_counts / np.sum(y_counts)
-    expected_y_counts = y_ratios * len(x_list)
+    x_ratios = x_counts / np.sum(x_counts)
+    expected_y_counts = x_ratios * len(y_list)
 
-    return chisquare(x_counts, expected_y_counts).pvalue
+    return chisquare(y_counts, expected_y_counts).pvalue
 
 
 
