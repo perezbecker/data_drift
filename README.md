@@ -3,7 +3,7 @@
 This repo contains code to implement a series of data drift tests and distances, as well as the visualization of their underlying distributions.
 
 ## Demo Notebook
-The demo notebook is `data_drift_demo.ipynb`. It contains a demo of the data drift tests and distances, including visualizations of the underlying distributions. It implements the following test and distances:
+The demo notebook is `nb_data_drift_demo.ipynb`. It contains a demo of the data drift tests and distances, including visualizations of the underlying distributions. It implements the following test and distances:
 
 **Tests**
 - **Two-sided Kolmogorov-Smirnov (KS) Test** - Numerical Features

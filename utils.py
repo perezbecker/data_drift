@@ -146,22 +146,14 @@ def jensen_shannon_distance_aml(x_array, y_array):
     return distance.jensenshannon(current_ratios, reference_ratios)
 
 
-def wasserstein_distance_on_probability_distribution_numerical(x_array, y_array, bin_strategy='min'):
+# WARNING: This is an incorrect implementation of the Wasserstein distance. It is included here for debugging purposes. 
+def normed_wasserstein_distance_on_probability_distribution_numerical(x_array, y_array, bin_strategy='min'):
     bin_edges = compute_optimal_histogram_bin_edges(x_array, y_array, bin_strategy=bin_strategy)
-    x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array)
+    x_percent = np.histogram(x_array, bins=bin_edges)[0] / len(x_array) 
     y_percent = np.histogram(y_array, bins=bin_edges)[0] / len(y_array)
-
-    #for i in range(len(x_percent)):
-    #    xobs=np.full(int(x_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of x_percent observations with value of the bin
-    #    yobs=np.full(int(y_percent[i]), (bin_edges[i]+bin_edges[i+1])/2) # create an array of y_percent observations with value of the bin
-    #    if i == 0:
-    #        agg_xobs = xobs
-    #        agg_yobs = yobs
-    #    else:
-    #        agg_xobs = np.append(agg_xobs,xobs) 
-    #        agg_yobs = np.append(agg_yobs,yobs) 
-
-    return wasserstein_distance(x_percent, y_percent)
+    norm = max(np.std(x_percent),0.001)
+    
+    return wasserstein_distance(x_percent, y_percent) / norm
 
 
 def normed_wasserstein_distance_numerical(x_array, y_array):
@@ -188,8 +180,10 @@ def psi_numerical(x_array, y_array, bin_strategy='min', smoothing='fid'):
         x_count = x_count + 1
         y_count = y_count + 1 
 
-        x_percent = x_count / len(x_array) 
-        y_percent = y_count / len(y_array)   
+        # normalize counts to get percentages. Note that we had to add the number of histogram bins
+        # to the denominator to account for the laplace smoothing
+        x_percent = x_count / (len(x_array) + len(x_count))
+        y_percent = y_count / (len(y_array) + len(y_count))  
 
         psi = 0.0
         for i in range(len(x_percent)):
@@ -306,7 +300,7 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min',output='summary'):
     acro = { 'jensen_shannon_distance_numerical':'JS',
             'jensen_shannon_distance_aml':'JS_AML',
             'normed_wasserstein_distance_numerical':'Normed_Wasserstein',
-            'wasserstein_distance_on_probability_distribution_numerical':'Wasserstein_Prob_Dist',
+            'normed_wasserstein_distance_on_probability_distribution_numerical':'Normed_Wasserstein_Prob_Dist',
             'wasserstein_distance_aml':'Wasserstein_AML',
             'psi_numerical':'PSI',
             'd_inf_numerical':'d_inf',
@@ -317,7 +311,7 @@ def drift_evaluator(x,y,drift_test,bin_strategy='min',output='summary'):
             'chi_squared_test_categorical':'Chi^2 Test'
     }
 
-    if drift_test in ['jensen_shannon_distance_numerical','wasserstein_distance_on_probability_distribution_numerical','psi_numerical', 'd_inf_numerical']:
+    if drift_test in ['jensen_shannon_distance_numerical','normed_wasserstein_distance_on_probability_distribution_numerical','psi_numerical', 'd_inf_numerical']:
         distance_measure = globals()[drift_test] # Select the appropriate function based on string
         dist = distance_measure(x,y,bin_strategy=bin_strategy)
         if dist > float(config['thresholds'][drift_test]):
@@ -403,6 +397,7 @@ def create_drift_metric_comparison_table_numerical(x,y,bin_strategy='stu'):
     drift_metrics = {
         'Jensen-Shannon Distance':drift_evaluator(x,y,"jensen_shannon_distance_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
         'Normed Wasserstein Distance':drift_evaluator(x,y,"normed_wasserstein_distance_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
+        'Normed Wasserstein Distance on Prob Dist':drift_evaluator(x,y,"normed_wasserstein_distance_on_probability_distribution_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
         'PSI':drift_evaluator(x,y,"psi_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
         'D_inf':drift_evaluator(x,y,"d_inf_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
         'KS Test':drift_evaluator(x,y,"two_sample_ks_test_numerical",bin_strategy=bin_strategy, output='distance_and_drift_detection'),
